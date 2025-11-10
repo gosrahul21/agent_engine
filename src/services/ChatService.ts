@@ -11,9 +11,9 @@ class ChatService {
         return chatbot;
     }
 
-    async getAllChatbots() {
+    async getAllChatbots(userId: string) {
         try {
-            const chatbots = await Chatbot.find().lean();
+            const chatbots = await Chatbot.find({ userId: userId }).lean();
             return chatbots;
         } catch (error) {
             console.error(error);

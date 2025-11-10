@@ -70,6 +70,14 @@ class ChatController {
             message: "Chatbot deleted successfully" 
         });
     }
+    async getAllChatbots(req: Request, res: Response) {
+        console.log((req as any).user.id);
+        const chatbots = await ChatService.getAllChatbots((req as any).user.id as string);
+        return res.status(200).json({
+            success: true,
+            data: chatbots
+        });
+    }
 
     /**
      * Send a chat message with LangChain and vector context

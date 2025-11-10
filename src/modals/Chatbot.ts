@@ -1,6 +1,10 @@
 import * as mongoose from "mongoose";
 
 const chatbotSchema = new mongoose.Schema({
+    userId: {
+        type: String,
+        required: true
+    },
     name: {
         type: String,
         required: true
