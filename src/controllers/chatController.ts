@@ -23,8 +23,10 @@ class ChatController {
 
     async createChatbot(req: Request, res: Response) {
         // Validation is handled by middleware
+        const userId = (req as any).user.userId;
         const { name, description, metadata, systemPrompt } = req.body;
         const chatbot = await ChatService.createChatbot({ 
+            userId,
             name, 
             description, 
             metadata,
@@ -71,8 +73,8 @@ class ChatController {
         });
     }
     async getAllChatbots(req: Request, res: Response) {
-        console.log((req as any).user.id);
-        const chatbots = await ChatService.getAllChatbots((req as any).user.id as string);
+        console.log((req as any).user.userId);
+        const chatbots = await ChatService.getAllChatbots((req as any).user.userId as string);
         return res.status(200).json({
             success: true,
             data: chatbots

@@ -6,7 +6,8 @@ class ChatService {
         return chatbot;
     }
 
-    async createChatbot(data: { name: string, description: string, metadata?: Record<string, any>, systemPrompt?: string, files?: File[] }) {
+    async createChatbot(data: { userId: string, name: string, description: string, metadata?: Record<string, any>, systemPrompt?: string, files?: File[] }) {
+        console.log("data", data);
         const chatbot = await Chatbot.create(data);
         return chatbot;
     }

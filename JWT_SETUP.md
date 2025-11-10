@@ -11,6 +11,7 @@ JsonWebTokenError: invalid algorithm
 ```
 
 This happens because:
+
 1. Auth service signs tokens with RS256 (private key)
 2. Chat agent tries to verify with wrong algorithm or missing public key
 
@@ -21,10 +22,12 @@ Chat agent needs the **PUBLIC KEY** from the auth service to verify RS256 tokens
 ### Step 1: Get Public Key from Auth Service
 
 The auth service should have a key pair:
+
 - **Private Key**: Used to SIGN tokens (kept secret on auth service)
 - **Public Key**: Used to VERIFY tokens (can be shared with chat agent)
 
 Look for these in your auth service:
+
 ```
 auth-server/.env
 AUTH_SECRET_KEY=<PRIVATE_KEY>
@@ -32,6 +35,7 @@ AUTH_PUBLIC_KEY=<PUBLIC_KEY>
 ```
 
 Or they might be in files like:
+
 ```
 auth-server/keys/private.key
 auth-server/keys/public.key
@@ -49,6 +53,7 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...
 ```
 
 **Important Notes:**
+
 - Use double quotes for multiline keys
 - Keep the BEGIN/END PUBLIC KEY lines
 - This is ONLY the public key, NOT the private key
@@ -59,11 +64,13 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...
 If the key has newlines, you can format it in two ways:
 
 **Option A: Single Line with \n**
+
 ```env
 JWT_SECRET_PUBLIC_KEY="-----BEGIN PUBLIC KEY-----\nMIIBIjAN...\n-----END PUBLIC KEY-----"
 ```
 
 **Option B: Multiline String**
+
 ```env
 JWT_SECRET_PUBLIC_KEY="-----BEGIN PUBLIC KEY-----
 MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...
@@ -94,7 +101,7 @@ Instead of validating tokens in chat_agent, proxy the validation to auth service
 const validateToken = async (token: string) => {
   try {
     const response = await axios.get(`${AUTH_SERVICE_URL}/auth/validate`, {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` },
     });
     return response.data.user;
   } catch {
@@ -167,6 +174,7 @@ curl -X GET http://localhost:3000/api/chatbots/all \
 ### Expected Results
 
 **With correct public key:**
+
 ```json
 {
   "success": true,
@@ -175,6 +183,7 @@ curl -X GET http://localhost:3000/api/chatbots/all \
 ```
 
 **Without public key or wrong key:**
+
 ```
 JsonWebTokenError: invalid algorithm
 ```
@@ -224,14 +233,72 @@ If you just want to get it working quickly:
 ## Current Issue Resolution
 
 The error you're seeing happens because:
+
 1. ✅ Auth proxy is working (login succeeds)
 2. ❌ Chatbot routes fail because token can't be verified
 3. ❌ Missing or incorrect JWT_SECRET_PUBLIC_KEY
 
 **To fix:**
+
 1. Get public key from auth service
-2. Add to chat_agent/.env
+2. Add to chat_agent/.env OR place in `agent_engine/config/public.pem`
 3. Rebuild and restart chat agent
 
 After this, both auth (proxied) and chatbot operations will work!
 
+## Setup Options
+
+The middleware now supports **two methods** to provide the public key:
+
+### Option 1: File-Based (Recommended)
+
+1. Create a `config` directory in `agent_engine`:
+
+   ```bash
+   mkdir -p agent_engine/config
+   ```
+
+2. Copy the public key from auth server:
+
+   ```bash
+   # From auth-server/config/public.pem
+   cp ../auth-server/config/public.pem agent_engine/config/public.pem
+   ```
+
+3. The middleware will automatically detect and use this file.
+
+### Option 2: Environment Variable
+
+1. Get the public key from auth server (`auth-server/config/public.pem`)
+
+2. Add to `agent_engine/.env`:
+
+   ```env
+   JWT_SECRET_PUBLIC_KEY="-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...\n-----END PUBLIC KEY-----"
+   ```
+
+   **Important:** Use `\n` for newlines in the env variable, or use multiline format with quotes.
+
+3. The middleware will automatically handle newline conversion.
+
+## Troubleshooting "secretOrPublicKey must be an asymmetric key"
+
+This error means the public key is not in the correct PEM format. Ensure:
+
+1. ✅ Key starts with `-----BEGIN PUBLIC KEY-----`
+2. ✅ Key ends with `-----END PUBLIC KEY-----`
+3. ✅ Key has proper newlines (not all on one line)
+4. ✅ If using env variable, escape newlines with `\n`
+
+**Quick check:**
+
+```bash
+# If using file, verify format:
+cat agent_engine/config/public.pem
+
+# Should show:
+# -----BEGIN PUBLIC KEY-----
+# MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...
+# ...
+# -----END PUBLIC KEY-----
+```
