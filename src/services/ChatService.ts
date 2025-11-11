@@ -45,6 +45,14 @@ class ChatService {
         const chatbot = await Chatbot.findByIdAndUpdate(chatbotId, { $push: { queries: query } }, { new: true }).lean();
         return chatbot;
     }
+    async addDomain(chatbotId: string, domain: string) {
+        const chatbot = await Chatbot.findByIdAndUpdate(chatbotId, { $push: { domain: domain } }, { new: true }).lean();
+        return chatbot;
+    }
+    async removeDomain(chatbotId: string, domain: string) {
+        const chatbot = await Chatbot.findByIdAndUpdate(chatbotId, { $pull: { domain: domain } }, { new: true }).lean();
+        return chatbot;
+    }
 }
 
 export default new ChatService();

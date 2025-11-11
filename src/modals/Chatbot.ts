@@ -44,6 +44,16 @@ const chatbotSchema = new mongoose.Schema({
         type: Object,
         required: false,
     },
+    allowedDomains: {
+        type: [String],
+        default: [],
+        required: false
+    },
+    isEmbeddable: {
+        type: Boolean,
+        default: false,
+        required: false
+    },
     createdAt: {
         type: Date,
         default: Date.now

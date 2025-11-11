@@ -23,7 +23,9 @@ export const createChatbotSchema = z.object({
     .max(1000, "System prompt must be less than 1000 characters")
     .trim()
     .optional(),
-  metadata: z.record(z.unknown()).optional()
+  metadata: z.record(z.unknown()).optional(),
+  allowedDomains: z.array(z.string().min(1, "Domain cannot be empty")).optional(),
+  isEmbeddable: z.boolean().optional()
 });
 
 // Update chatbot validation
@@ -42,7 +44,9 @@ export const updateChatbotSchema = z.object({
     .max(1000, "System prompt must be less than 1000 characters")
     .trim()
     .optional(),
-  metadata: z.record(z.unknown()).optional()
+  metadata: z.record(z.unknown()).optional(),
+  allowedDomains: z.array(z.string().min(1, "Domain cannot be empty")).optional(),
+  isEmbeddable: z.boolean().optional()
 }).refine((data) => Object.keys(data).length > 0, {
   message: "At least one field must be provided for update"
 });

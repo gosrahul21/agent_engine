@@ -7,7 +7,6 @@ import * as path from "path";
 const getPublicKey = (): string => {
   // First, try to read from file (same as auth server)
   const publicKeyPath = path.join(__dirname, "../config/public.pem");
-  console.log("publicKeyPath", publicKeyPath);
   if (fs.existsSync(publicKeyPath)) {
     try {
       return fs.readFileSync(publicKeyPath, "utf-8");

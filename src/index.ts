@@ -4,6 +4,7 @@ import * as cors from "cors";
 import { connectDB } from "./modals/connection";
 import { chatRouter } from "./router/chatRouter";
 import { authRouter } from "./router/authRouter";
+import { publicRouter } from "./router/publicRouter";
 import { sanitize, validationErrorHandler } from "./validators/middleware";
 
 dotenv.config();
@@ -18,6 +19,7 @@ connectDB();
 // Routes
 app.use("/api/chatbots", chatRouter);
 app.use("/auth", authRouter); // Proxy auth requests to auth service
+app.use("/api/public", publicRouter); // Public endpoints for embedded chatbots
 
 app.get("/", (req: express.Request, res: express.Response) => {
   res.send("Hello World - Chat Agent with Auth Proxy");

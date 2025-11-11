@@ -72,6 +72,149 @@ export class VectorService {
 
     return contextParts.join("\n\n");
   }
+
+  /**
+   * Upload single document to RAG server
+   */
+  async uploadDocument(chatbotId: string, file: Express.Multer.File) {
+    try {
+      const FormData = require('form-data');
+      const formData = new FormData();
+      formData.append('file', file.buffer, {
+        filename: file.originalname,
+        contentType: file.mimetype,
+      });
+
+      const response = await axios.post(
+        `${this.baseUrl}/chatbots/${chatbotId}/documents`,
+        formData,
+        {
+          headers: {
+            ...formData.getHeaders(),
+          },
+          timeout: 30000, // 30 second timeout for file uploads
+        }
+      );
+
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error: any) {
+      console.error("Error uploading document:", error.message);
+      return {
+        success: false,
+        error: error.response?.data?.message || error.message || "Failed to upload document",
+      };
+    }
+  }
+
+  /**
+   * Upload multiple documents to RAG server
+   */
+  async uploadDocuments(chatbotId: string, files: Express.Multer.File[]) {
+    const results = [];
+    const errors = [];
+
+    for (const file of files) {
+      const result = await this.uploadDocument(chatbotId, file);
+      
+      if (result.success) {
+        results.push({
+          filename: file.originalname,
+          ...result.data
+        });
+      } else {
+        errors.push({
+          filename: file.originalname,
+          error: result.error
+        });
+      }
+    }
+
+    return {
+      success: errors.length === 0,
+      uploaded: results,
+      failed: errors,
+      totalUploaded: results.length,
+      totalFailed: errors.length
+    };
+  }
+
+  /**
+   * Get all documents for a chatbot
+   */
+  async getDocuments(chatbotId: string) {
+    try {
+      const response = await axios.get(
+        `${this.baseUrl}/chatbots/${chatbotId}/documents`,
+        {
+          timeout: 10000,
+        }
+      );
+
+      return {
+        success: true,
+        data: response.data.data || [],
+      };
+    } catch (error: any) {
+      console.error("Error fetching documents:", error.message);
+      return {
+        success: false,
+        error: error.response?.data?.message || error.message || "Failed to fetch documents",
+      };
+    }
+  }
+
+  /**
+   * Delete a document from RAG server
+   */
+  async deleteDocument(chatbotId: string, documentId: string) {
+    try {
+      const response = await axios.delete(
+        `${this.baseUrl}/chatbots/${chatbotId}/documents/${documentId}`,
+        {
+          timeout: 10000,
+        }
+      );
+
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error: any) {
+      console.error("Error deleting document:", error.message);
+      return {
+        success: false,
+        error: error.response?.data?.message || error.message || "Failed to delete document",
+      };
+    }
+  }
+
+  /**
+   * Delete all documents for a chatbot
+   */
+  async deleteAllDocuments(chatbotId: string) {
+    try {
+      const response = await axios.delete(
+        `${this.baseUrl}/chatbots/${chatbotId}/documents`,
+        {
+          timeout: 10000,
+        }
+      );
+
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error: any) {
+      console.error("Error deleting documents:", error.message);
+      return {
+        success: false,
+        error: error.response?.data?.message || error.message || "Failed to delete documents",
+      };
+    }
+  }
 }
 
 export default new VectorService();
