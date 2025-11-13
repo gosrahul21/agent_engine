@@ -15,21 +15,21 @@ export class LangChainService {
 
   constructor() {
     // Initialize LLM based on environment
-    const modelType = process.env.LLM_TYPE || "openai";
+    const modelType = process.env.LLM_TYPE || "ollama";
     
-    // if (modelType === "ollama") {
-    //   this.llm = new ChatOllama({
-    //     baseUrl: process.env.OLLAMA_BASE_URL || "http://localhost:11434",
-    //     model: process.env.OLLAMA_MODEL || "llama2",
-    //     temperature: 0.7,
-    //   });
-    // } else {
-    //   this.llm = new ChatOpenAI({
-    //     openAIApiKey: process.env.OPENAI_API_KEY || "",
-    //     modelName: process.env.OPENAI_MODEL || "gpt-3.5-turbo",
-    //     temperature: 0.7,
-    //   });
-    // }
+    if (modelType === "ollama") {
+      this.llm = new ChatOllama({
+        baseUrl: process.env.OLLAMA_BASE_URL || "http://localhost:11434",
+        model: process.env.OLLAMA_MODEL || "llama3.2",
+        temperature: 0.7,
+      });
+    } else {
+      this.llm = new ChatOpenAI({
+        openAIApiKey: process.env.OPENAI_API_KEY || "",
+        modelName: process.env.OPENAI_MODEL || "gpt-4o-mini",
+        temperature: 0.7,
+      });
+    }
   }
 
   /**

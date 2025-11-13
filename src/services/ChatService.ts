@@ -7,7 +7,6 @@ class ChatService {
     }
 
     async createChatbot(data: { userId: string, name: string, description: string, metadata?: Record<string, any>, systemPrompt?: string, files?: File[] }) {
-        console.log("data", data);
         const chatbot = await Chatbot.create(data);
         return chatbot;
     }
@@ -51,6 +50,11 @@ class ChatService {
     }
     async removeDomain(chatbotId: string, domain: string) {
         const chatbot = await Chatbot.findByIdAndUpdate(chatbotId, { $pull: { domain: domain } }, { new: true }).lean();
+        return chatbot;
+    }
+
+    async getChatbotByEmbedKey(embedKey: string) {
+        const chatbot = await Chatbot.findOne({ embedKey: embedKey }).lean();
         return chatbot;
     }
 }

@@ -59,7 +59,6 @@ export const authMiddleware = (
     let publicKey: string;
     try {
       publicKey = getPublicKey();
-      console.log("publicKey", publicKey);
     } catch (error: any) {
       console.error("Failed to load public key:", error.message);
       return res.status(500).json({

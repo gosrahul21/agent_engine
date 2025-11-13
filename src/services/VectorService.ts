@@ -7,7 +7,7 @@ export class VectorService {
   private baseUrl: string;
 
   constructor() {
-    this.baseUrl = process.env.RAG_SERVER_URL || "http://localhost:5000/api";
+    this.baseUrl = process.env.RAG_SERVER_URL+'/api' || "http://localhost:5000/api";
   }
 
   /**

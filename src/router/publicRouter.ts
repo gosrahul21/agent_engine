@@ -6,28 +6,33 @@ import {
   chatMessageSchema,
 } from "../validators/schemas";
 import { validateDomain } from "../middlewares/domain-validation";
+import { chatbotSessionMiddleware } from "../middlewares/chatbot-session-middleware";
 
 export const publicRouter = Router();
 
 // Public endpoints for embedded chatbots (with domain validation)
 publicRouter.get(
-  "/chatbots/:chatbotId",
-  validate(chatbotIdSchema, "params"),
+  "/chatbots",
+  chatbotSessionMiddleware,
   chatController.getChatbot
 );
 
+publicRouter.get(
+  "/chatbots/generate-session/:embedKey",
+  // validateDomain,
+  chatController.getChatbotSession
+);
+
 publicRouter.post(
-  "/chatbots/:chatbotId/chat",
-  validateDomain,
-  validate(chatbotIdSchema, "params"),
+  "/chatbots/chat",
+  chatbotSessionMiddleware,
   validate(chatMessageSchema, "body"),
   chatController.chat
 );
 
 publicRouter.get(
-  "/chatbots/:chatbotId/history",
-  validateDomain,
-  validate(chatbotIdSchema, "params"),
+  "/chatbots/history",
+  chatbotSessionMiddleware,
   chatController.getChatHistory
 );
 

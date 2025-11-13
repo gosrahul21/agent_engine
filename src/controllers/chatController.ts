@@ -3,11 +3,12 @@ import { type Request, type Response } from "express";
 import ChatService from "../services/ChatService";
 import LangChainService from "../services/LangChainService";
 import VectorService from "../services/VectorService";
-
+import * as jwt from "jsonwebtoken";
+import { isDomainAllowed, validateDomain } from "../middlewares/domain-validation";
 class ChatController {
     async getChatbot(req: Request, res: Response) {
         // Validation is handled by middleware
-        const { chatbotId } = req.params;
+        const { chatbotId } =(req as any).chatbot || req.params;
         const chatbot = await ChatService.getChatbot(chatbotId as string);
         if (!chatbot) {
             return res.status(404).json({ 
@@ -93,7 +94,23 @@ class ChatController {
         // Validation is handled by middleware
         const { chatbotId } = req.params;
         const updateData = req.body;
+        if(updateData.isEmbeddable ){
+            const bot = await ChatService.getChatbot(chatbotId as string);
+            if(!bot) {
+                return res.status(404).json({ 
+                    success: false,
+                    error: "Not found",
+                    message: "Chatbot not found" 
+                });
+            }
+            if(!bot.embedKey) {
+            // generate a key for the chatbot
+                updateData.embedKey = crypto.randomUUID();
+            }
+        }
+
         const chatbot = await ChatService.updateChatbot(chatbotId as string, updateData);
+
         if (!chatbot) {
             return res.status(404).json({ 
                 success: false,
@@ -138,7 +155,7 @@ class ChatController {
      */
     async chat(req: Request, res: Response) {
         try {
-            const { chatbotId } = req.params;
+            const { chatbotId } = (req as any).chatbot || req.params;
             const { message, userId } = req.body;
 
             if (!message || message.trim().length === 0) {
@@ -180,7 +197,7 @@ class ChatController {
      */
     async getChatHistory(req: Request, res: Response) {
         try {
-            const { chatbotId } = req.params;
+            const { chatbotId } = (req as any).chatbot || req.params;
             
             const history = await LangChainService.getHistory(chatbotId as string);
 
@@ -374,6 +391,50 @@ class ChatController {
                 success: false,
                 error: "Internal server error",
                 message: error.message || "Failed to delete document"
+            });
+        }
+    }
+
+    async getChatbotSession(req: Request, res: Response) {
+        try {
+            const { embedKey } = (req as any).chatbot || req.params;
+            const chatbot = await ChatService.getChatbotByEmbedKey(embedKey as string);
+            if (!chatbot) {
+                return res.status(404).json({
+                    success: false,
+                    error: "Not found",
+                    message: "Chatbot not found"
+                });
+            }
+            if(!chatbot.isEmbeddable) {
+                return res.status(403).json({
+                    success: false,
+                    error: "Forbidden",
+                    message: "This chatbot is not embeddable"
+                });
+            }
+            console.log("req.headers.origin", req.headers.origin, chatbot.allowedDomains);
+
+            if(!isDomainAllowed(req.headers.origin as string, chatbot.allowedDomains as string[])) {
+                return res.status(403).json({
+                    success: false,
+                    error: "Forbidden",
+                    message: "Domain not allowed"
+                });
+            }
+            
+            // create a jwt for the chatbot
+            const token = jwt.sign({ chatbotId: chatbot._id, userId: chatbot.userId, isEmbeddable: chatbot.isEmbeddable, allowedDomains: chatbot.allowedDomains }, process.env.CHATBOT_SESSION_SECRET as string, { expiresIn: "1h" });
+            return res.status(200).json({
+                success: true,
+                data: {sessionToken: token}
+            });
+        } catch (error: any) {
+            console.error("Get chatbot session error:", error);
+            return res.status(500).json({
+                success: false,
+                error: "Internal server error",
+                message: error.message || "Failed to get chatbot session"
             });
         }
     }

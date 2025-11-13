@@ -49,6 +49,13 @@ const chatbotSchema = new mongoose.Schema({
         default: [],
         required: false
     },
+    embedKey: {
+        type: String,
+        unique: true,
+        sparse: true,
+        required: false,
+        default: null
+    },
     isEmbeddable: {
         type: Boolean,
         default: false,
