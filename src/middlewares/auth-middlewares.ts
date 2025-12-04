@@ -48,6 +48,7 @@ export const authMiddleware = (
   res: Response,
   next: NextFunction
 ) => {
+  console.log("authMiddleware");
   const token = req.headers.authorization?.split(" ")[1];
 
   if (!token) {

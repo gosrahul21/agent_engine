@@ -20,7 +20,7 @@ export class LangChainService {
     if (modelType === "ollama") {
       this.llm = new ChatOllama({
         baseUrl: process.env.OLLAMA_BASE_URL || "http://localhost:11434",
-        model: process.env.OLLAMA_MODEL || "llama3.2",
+        model: process.env.OLLAMA_MODEL || "llama3.2:3b",
         temperature: 0.7,
       });
     } else {
