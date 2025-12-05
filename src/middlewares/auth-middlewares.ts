@@ -7,6 +7,7 @@ import * as path from "path";
 const getPublicKey = (): string => {
   // First, try to read from file (same as auth server)
   const publicKeyPath = path.join(__dirname, "../config/public.pem");
+  console.log("publicKeyPath", publicKeyPath);
   if (fs.existsSync(publicKeyPath)) {
     try {
       return fs.readFileSync(publicKeyPath, "utf-8");
@@ -14,7 +15,7 @@ const getPublicKey = (): string => {
       console.warn("Failed to read public key from file, trying env variable");
     }
   }
-
+  console.log("publicKeyPath not found, trying env variable");
   // Fall back to environment variable
   const publicKeyFromEnv = process.env.JWT_SECRET_PUBLIC_KEY;
   if (!publicKeyFromEnv) {
