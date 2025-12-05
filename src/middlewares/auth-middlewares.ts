@@ -80,7 +80,7 @@ export const authMiddleware = (
     //     error: "Public key must be in PEM format",
     //   });
     // }
-
+    
     // Verify with RS256 algorithm (matching auth service)
     const decoded = jwt.verify(token, publicKey);
 
