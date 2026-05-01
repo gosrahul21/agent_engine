@@ -1,12 +1,14 @@
 import * as express from "express";
 import * as dotenv from "dotenv";
+dotenv.config();
+
 import * as cors from "cors";
 import { connectDB } from "./modals/connection";
 import { chatRouter } from "./router/chatRouter";
 import { authRouter } from "./router/authRouter";
 import { sanitize, validationErrorHandler } from "./validators/middleware";
 
-dotenv.config();
+
 
 const app = express();
 app.use(cors());
