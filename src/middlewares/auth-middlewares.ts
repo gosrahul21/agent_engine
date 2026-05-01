@@ -1,54 +1,5 @@
 import { NextFunction, Request, Response } from "express";
 import * as jwt from "jsonwebtoken";
-import * as fs from "fs";
-import * as path from "path";
-
-// Helper function to get the public key
-const getPublicKey = (): string => {
-  // First, try to read from file (same as auth server)
-  const publicKeyPath = path.join(__dirname, "../config/public.pem");
-  if (fs.existsSync(publicKeyPath)) {
-    try {
-      return fs.readFileSync(publicKeyPath, "utf-8");
-    } catch (error) {
-      console.warn("Failed to read public key from file, trying env variable");
-    }
-  }
-
-  // Fall back to environment variable
-  const publicKeyFromEnv = process.env.JWT_SECRET_PUBLIC_KEY;
-  if (!publicKeyFromEnv) {
-    throw new Error(
-      "JWT_SECRET_PUBLIC_KEY not configured. Either set the env variable or place public.pem in config/"
-    );
-  }
-
-  // Handle newlines in env variable (replace \n with actual newlines)
-  let publicKey = publicKeyFromEnv;
-
-  // If the key doesn't have proper PEM headers, it might be a single line
-  // Check if it needs formatting
-  if (!publicKey.includes("-----BEGIN PUBLIC KEY-----")) {
-    throw new Error("Public key must be in PEM format with BEGIN/END headers");
-  }
-
-  // Replace escaped newlines with actual newlines
-  publicKey = publicKey.replace(/\\n/g, "\n");
-
-  // If the key is on a single line but has headers, it needs proper newlines for RS256
-  if (!publicKey.includes("\n") && publicKey.startsWith("-----BEGIN PUBLIC KEY-----")) {
-    publicKey = publicKey
-      .replace("-----BEGIN PUBLIC KEY-----", "-----BEGIN PUBLIC KEY-----\n")
-      .replace("-----END PUBLIC KEY-----", "\n-----END PUBLIC KEY-----");
-  }
-
-  // Ensure proper PEM format with a trailing newline
-  if (!publicKey.endsWith("\n") && !publicKey.endsWith("\r\n")) {
-    publicKey = publicKey.trim() + "\n";
-  }
-
-  return publicKey;
-};
 
 export const authMiddleware = (
   req: Request,
@@ -62,32 +13,10 @@ export const authMiddleware = (
   }
 
   try {
-    // Get the public key for RS256 verification
-    let publicKey: string;
-    try {
-      publicKey = getPublicKey();
-    } catch (error: any) {
-      console.error("Failed to load public key:", error.message);
-      return res.status(500).json({
-        message: "Server configuration error",
-        error: error.message,
-      });
-    }
-
-    // Verify the key format
-    // if (
-    //   !publicKey.includes("-----BEGIN PUBLIC KEY-----") ||
-    //   !publicKey.includes("-----END PUBLIC KEY-----")
-    // ) {
-    //   console.error("Public key is not in valid PEM format");
-    //   return res.status(500).json({
-    //     message: "Server configuration error",
-    //     error: "Public key must be in PEM format",
-    //   });
-    // }
-
-    // Verify with RS256 algorithm (matching auth service)
-    const decoded = jwt.verify(token, publicKey,{algorithms:["RS256"]});
+    const jwtSecret = process.env.JWT_SECRET || 'super-secret-key-123';
+    
+    // Verify with HS256 algorithm
+    const decoded = jwt.verify(token, jwtSecret, { algorithms: ["HS256"] });
 
     if (!decoded) {
       return res.status(401).json({ message: "Unauthorized" });
@@ -101,13 +30,6 @@ export const authMiddleware = (
     next();
   } catch (error: any) {
     console.error("JWT verification error:", error.message);
-
-    // Provide more helpful error messages
-    if (error.message.includes("asymmetric key")) {
-      console.error(
-        "Public key format issue. Ensure the key is in PEM format with proper headers."
-      );
-    }
 
     return res.status(401).json({
       message: "Unauthorized",
