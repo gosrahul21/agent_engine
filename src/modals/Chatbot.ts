@@ -40,6 +40,16 @@ const chatbotSchema = new mongoose.Schema({
         }],
         default: [],
     },
+    documents: {
+        type: [{
+            filename: { type: String, required: true },
+            originalname: { type: String, required: true },
+            mimetype: { type: String, required: false },
+            size: { type: Number, required: false },
+            uploadedAt: { type: Date, default: Date.now },
+        }],
+        default: [],
+    },
     metadata: {
         type: Object,
         required: false,

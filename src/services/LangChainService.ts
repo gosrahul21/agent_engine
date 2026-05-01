@@ -1,9 +1,9 @@
 import { ChatOpenAI } from "@langchain/openai";
 import { ChatOllama } from "@langchain/ollama";
+import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { ChatPromptTemplate, MessagesPlaceholder } from "@langchain/core/prompts";
 import { RunnableSequence } from "@langchain/core/runnables";
-import { BufferMemory, ChatMessageHistory } from "langchain/memory";
-import { HumanMessage, AIMessage, SystemMessage } from "@langchain/core/messages";
+import { HumanMessage, AIMessage, SystemMessage, BaseMessage } from "@langchain/core/messages";
 import Chatbot from "../modals/Chatbot";
 import VectorService from "./VectorService";
 
@@ -15,29 +15,36 @@ export class LangChainService {
 
   constructor() {
     // Initialize LLM based on environment
-    const modelType = process.env.LLM_TYPE || "openai";
+    const modelType = process.env.LLM_TYPE || "gemini";
     
-    // if (modelType === "ollama") {
-    //   this.llm = new ChatOllama({
-    //     baseUrl: process.env.OLLAMA_BASE_URL || "http://localhost:11434",
-    //     model: process.env.OLLAMA_MODEL || "llama2",
-    //     temperature: 0.7,
-    //   });
-    // } else {
-    //   this.llm = new ChatOpenAI({
-    //     openAIApiKey: process.env.OPENAI_API_KEY || "",
-    //     modelName: process.env.OPENAI_MODEL || "gpt-3.5-turbo",
-    //     temperature: 0.7,
-    //   });
-    // }
+    if (modelType === "ollama") {
+      this.llm = new ChatOllama({
+        baseUrl: process.env.OLLAMA_BASE_URL || "http://localhost:11434",
+        model: process.env.OLLAMA_MODEL || "llama2",
+        temperature: 0.7,
+      });
+    } 
+    else if (modelType === "gemini") {
+      this.llm = new ChatGoogleGenerativeAI({
+        apiKey: process.env.GOOGLE_API_KEY || "AIzaSyDr9eCQ882dW9F5F9FBD7frxd6quNCs1N4",
+        model: process.env.GOOGLE_MODEL || "gemini-2.5-flash",
+        maxOutputTokens: 2048,
+      });
+    } 
+    else {
+      this.llm = new ChatOpenAI({
+        openAIApiKey: process.env.OPENAI_API_KEY || "",
+        modelName: process.env.OPENAI_MODEL || "gpt-3.5-turbo",
+        temperature: 0.7,
+      });
+    }
   }
 
   /**
-   * Create a conversational chain with memory
+   * Build LangChain message history from stored chatbot history
    */
-  private async createChain(chatbot: any, chatHistory: any[]) {
-    // Convert stored chat history to LangChain messages
-    const messages = chatHistory.map((msg) => {
+  private buildMessageHistory(chatHistory: any[]): BaseMessage[] {
+    return chatHistory.map((msg) => {
       if (msg.role === "user") {
         return new HumanMessage(msg.content);
       } else if (msg.role === "assistant") {
@@ -46,36 +53,37 @@ export class LangChainService {
         return new SystemMessage(msg.content);
       }
     });
+  }
 
-    const memory = new BufferMemory({
-      chatHistory: new ChatMessageHistory(messages),
-      returnMessages: true,
-      memoryKey: "chat_history",
-    });
+  /**
+   * Create a conversational chain
+   */
+  private createChain(chatbot: any, chatHistory: any[]) {
+    const messages = this.buildMessageHistory(chatHistory);
 
-    // Create prompt template with context
+    const systemInstructions =
+      chatbot.systemPrompt ||
+      "You are a helpful AI assistant. Use the provided context to answer questions accurately. If the context doesn't contain the answer, say so.";
+
+    // Single system message — required by Gemini (no multiple system turns allowed)
     const prompt = ChatPromptTemplate.fromMessages([
-      ["system", chatbot.systemPrompt || "You are a helpful AI assistant. Use the provided context to answer questions accurately. If the context doesn't contain the answer, say so."],
-      ["system", "Context:\n{context}"],
+      ["system", `${systemInstructions}\n\nContext:\n{context}`],
       new MessagesPlaceholder("chat_history"),
       ["human", "{input}"],
     ]);
 
-    // Create chain
+    // Create chain using modern approach — pass messages directly
     const chain = RunnableSequence.from([
       {
         input: (input: any) => input.input,
         context: (input: any) => input.context,
-        chat_history: async () => {
-          const history = await memory.chatHistory.getMessages() as any;
-          return history;
-        },
-      } as any,
+        chat_history: (_input: any) => messages,
+      },
       prompt,
-      this.llm as any,
+      this.llm,
     ]);
 
-    return { chain, memory };
+    return chain;
   }
 
   /**
@@ -102,8 +110,8 @@ export class LangChainService {
         console.warn("Could not fetch context from vector store:", error);
       }
 
-      // Create chain with memory
-      const { chain, memory } = await this.createChain(chatbot, chatHistory);
+      // Create chain
+      const chain = this.createChain(chatbot, chatHistory);
 
       // Invoke chain
       const response = await chain.invoke({
@@ -182,13 +190,55 @@ export class LangChainService {
   }
 
   /**
-   * Stream chat responses (for future implementation)
+   * Stream chat responses using SSE (Server-Sent Events)
    */
-  async streamChat(chatbotId: string, message: string) {
-    // TODO: Implement streaming responses
-    throw new Error("Streaming not yet implemented");
+  async streamChat(chatbotId: string, message: string, res: any) {
+    const chatbot = await Chatbot.findById(chatbotId);
+    if (!chatbot) throw new Error("Chatbot not found");
+
+    const chatHistory = chatbot.chatHistory || [];
+
+    // Fetch RAG context
+    let context = "";
+    try {
+      const vectorResults = await VectorService.queryVectors(chatbotId, message, 3);
+      context = VectorService.formatContext(vectorResults);
+    } catch {
+      // No context available — proceed without it
+    }
+
+    const chain = this.createChain(chatbot, chatHistory);
+
+    // Set SSE headers
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.flushHeaders();
+
+    let fullResponse = "";
+    const stream = await chain.stream({
+      input: message,
+      context: context || "No additional context available.",
+    });
+
+    for await (const chunk of stream) {
+      const token: string = chunk.content || "";
+      if (token) {
+        fullResponse += token;
+        res.write(`data: ${JSON.stringify({ token })}\n\n`);
+      }
+    }
+
+    // Signal done
+    res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+    res.end();
+
+    // Persist the conversation turn to MongoDB
+    chatbot.chatHistory.push({ role: "user", content: message, timestamp: new Date() });
+    chatbot.chatHistory.push({ role: "assistant", content: fullResponse, timestamp: new Date() });
+    chatbot.updatedAt = new Date();
+    await chatbot.save();
   }
 }
 
 export default new LangChainService();
-

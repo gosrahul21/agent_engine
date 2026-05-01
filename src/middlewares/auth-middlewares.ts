@@ -7,7 +7,6 @@ import * as path from "path";
 const getPublicKey = (): string => {
   // First, try to read from file (same as auth server)
   const publicKeyPath = path.join(__dirname, "../config/public.pem");
-  console.log("publicKeyPath", publicKeyPath);
   if (fs.existsSync(publicKeyPath)) {
     try {
       return fs.readFileSync(publicKeyPath, "utf-8");
@@ -60,7 +59,6 @@ export const authMiddleware = (
     let publicKey: string;
     try {
       publicKey = getPublicKey();
-      console.log("publicKey", publicKey);
     } catch (error: any) {
       console.error("Failed to load public key:", error.message);
       return res.status(500).json({
