@@ -80,7 +80,7 @@ export const authMiddleware = (
     // }
 
     // Verify with RS256 algorithm (matching auth service)
-    const decoded = jwt.verify(token, publicKey);
+    const decoded = jwt.verify(token, publicKey,{algorithms:["RS256"]});
 
     if (!decoded) {
       return res.status(401).json({ message: "Unauthorized" });
