@@ -26,7 +26,7 @@ export class LangChainService {
     } 
     else if (modelType === "gemini") {
       this.llm = new ChatGoogleGenerativeAI({
-        apiKey: process.env.GOOGLE_API_KEY || "AIzaSyDr9eCQ882dW9F5F9FBD7frxd6quNCs1N4",
+        apiKey: process.env.GOOGLE_API_KEY!,
         model: process.env.GOOGLE_MODEL || "gemini-2.5-flash",
         maxOutputTokens: 2048,
       });
