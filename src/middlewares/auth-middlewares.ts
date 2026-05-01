@@ -35,7 +35,14 @@ const getPublicKey = (): string => {
   // Replace escaped newlines with actual newlines
   publicKey = publicKey.replace(/\\n/g, "\n");
 
-  // Ensure proper PEM format
+  // If the key is on a single line but has headers, it needs proper newlines for RS256
+  if (!publicKey.includes("\n") && publicKey.startsWith("-----BEGIN PUBLIC KEY-----")) {
+    publicKey = publicKey
+      .replace("-----BEGIN PUBLIC KEY-----", "-----BEGIN PUBLIC KEY-----\n")
+      .replace("-----END PUBLIC KEY-----", "\n-----END PUBLIC KEY-----");
+  }
+
+  // Ensure proper PEM format with a trailing newline
   if (!publicKey.endsWith("\n") && !publicKey.endsWith("\r\n")) {
     publicKey = publicKey.trim() + "\n";
   }
